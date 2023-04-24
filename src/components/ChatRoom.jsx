@@ -1,9 +1,11 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {over} from "stompjs";
 import SockJS from "sockjs-client";
+import axios from "axios";
 
 let path = "http://localhost:8080/chat"
 let stompClient = null;
+
 
 const ChatRoom = () => {
     const [data, setData] = useState({
@@ -13,8 +15,26 @@ const ChatRoom = () => {
         message: ""
     });
     const [name, setName] = useState("");
-    const [publicChat, setPublicChat] = useState([]);
+    const [chat, setChat] = useState([]);
+    const [allUsers, setAllUsers] = useState([]);
+    const [resName, setResName] = useState("public");
+    const BASE = ["public"]
 
+    const getUsers = () => {
+        axios.get("http://localhost:8080/allUsers").then(res => {
+            setAllUsers([...BASE, ...res.data])
+            localStorage.setItem("public", JSON.stringify([]))
+            res.data.map(elem => localStorage.setItem(elem, JSON.stringify([])))
+
+        })
+    }
+
+
+    const rebaseChat = (index) => {
+        console.log(JSON.parse(localStorage.getItem(index)))
+        setChat(JSON.parse(localStorage.getItem(index)))
+        setResName(index)
+    }
 
     const handleValue = (event) => {
         const {value, name} = event.target;
@@ -25,6 +45,7 @@ const ChatRoom = () => {
     const onConnected = () => {
         setData({...data, connected: true})
         stompClient.subscribe("/chatroom/public", onPublicMessageReceiver)
+        stompClient.subscribe("/chatroom/" + data.username, onPublicMessageReceiver)
         userJoin();
     }
     const onError = (err) => {
@@ -36,18 +57,41 @@ const ChatRoom = () => {
         console.log(payloadData);
         switch (payloadData.status) {
             case "JOIN":
+                getUsers()
+                console.log("New user has joined")
                 break;
             case "MESSAGE":
-                console.log(payloadData);
-                publicChat.push(payloadData);
-                setPublicChat([...publicChat])
+                console.log("payload" + payloadData.senderName);
+                if(payloadData.recipientName !== "public") {
+                    let buff = JSON.parse(localStorage.getItem(payloadData.senderName))
+                    if (buff === null)
+                        buff = []
+                    console.log(buff)
+                    buff.push(payloadData)
+                    console.log(payloadData)
+                    localStorage.setItem(payloadData.senderName, JSON.stringify(buff))
+                    if(resName === payloadData.senderName)
+                        setChat(JSON.parse(localStorage.getItem(payloadData.senderName)))
+                }else{
+                    let buff = JSON.parse(localStorage.getItem(payloadData.recipientName))
+                    if (buff === null)
+                        buff = []
+                    console.log(buff)
+                    buff.push(payloadData)
+                    console.log(payloadData)
+                    localStorage.setItem(payloadData.recipientName, JSON.stringify(buff))
+                    if (resName === "public")
+                        setChat(JSON.parse(localStorage.getItem(payloadData.recipientName)))
+                }
+                // chat.push(payloadData);
+                // setChat([...chat])
                 break;
             case "REBASE":
-                publicChat.map(elem => {
-                    if(elem.senderName === payloadData.senderName)
+                chat.map(elem => {
+                    if (elem.senderName === payloadData.senderName)
                         elem.senderName = payloadData.recipientName
                 })
-                setPublicChat([...publicChat])
+                setChat([...chat])
                 break;
         }
     }
@@ -77,20 +121,33 @@ const ChatRoom = () => {
             let chatMessage = {
                 senderName: data.username,
                 message: data.message,
-                status: "MESSAGE"
+                status: "MESSAGE",
+                recipientName: resName
             };
+            if(resName !== "public") {
+                // console.log(resName)
+                const buff = JSON.parse(localStorage.getItem(resName))
+
+                // console.log(buff)
+                buff.push(chatMessage)
+
+                localStorage.setItem(resName, JSON.stringify(buff))
+                setChat(JSON.parse(localStorage.getItem(resName)))
+            }
             stompClient.send('/app/message', {}, JSON.stringify(chatMessage));
             setData({...data, "message": ""});
-            console.log(publicChat);
+            // console.log(chat);
         }
     }
 
     const userJoin = () => {
         let chatMessage = {
             senderName: data.username,
+            recipientName: "public",
             status: "JOIN"
         };
         stompClient.send('/app/message', {}, JSON.stringify(chatMessage));
+        getUsers()
     }
 
 
@@ -104,41 +161,48 @@ const ChatRoom = () => {
                                 <h1 className="output__name">{name}</h1>
                                 <div className="changeName__wrapper">
                                     <input type="text" className='changeName' id='changeNameId'/>
-                                    <button type="submit" className='changeBtn' onClick={() =>{
+                                    <button type="submit" className='changeBtn' onClick={() => {
                                         let newValue = document.getElementById('changeNameId');
-                                        if (publicChat.filter(elem => elem.senderName === newValue.value).length === 0) {
+                                        if (chat.filter(elem => elem.senderName === newValue.value).length === 0) {
                                             rebase(name, newValue.value);
-                                            publicChat.map(elem => {
+                                            chat.map(elem => {
                                                 if (elem.senderName === name)
                                                     elem.senderName = newValue.value;
                                             })
-                                            setPublicChat([...publicChat])
+                                            setChat([...chat])
                                             setName(newValue.value);
                                             setData({...data, username: newValue.value});
                                             newValue.value = "";
-                                        }else{
+                                        } else {
                                             window.alert("This name are already busy");
                                             newValue.value = "";
                                         }
-                                    }}>Change</button>
+                                    }}>Change
+                                    </button>
                                 </div>
                             </div>
                             <ul>
-                                <li className="member">Chatroom</li>
+                                {
+                                    allUsers.filter(elem => elem !== data.username).map(elem =>
+                                        <li key={elem} onClick={() => rebaseChat(elem)} className="member">{elem}</li>)
+                                }
                             </ul>
                         </div>
                         <div className="chat-content">
+                            <div>Chat with:{resName}</div>
                             <ul className="chat-messages">
-                                {publicChat.map((chat, index) => (
+                                {chat.map((chat, index) => (
                                     <li key={index}>
                                         <div className='message__inner' key={index}>
                                             {chat.senderName !== data.username &&
                                                 <div className='message'>
-                                                    <div className="avatar">{chat.senderName}</div><div className="message-data">{chat.message}</div>
+                                                    <div className="avatar">{chat.senderName}</div>
+                                                    <div className="message-data">{chat.message}</div>
                                                 </div>}
                                             {chat.senderName === data.username &&
                                                 <div className='other-message'>
-                                                    <div className="message-data">{chat.message}</div><div className="avatar self">{chat.senderName}</div>
+                                                    <div className="message-data">{chat.message}</div>
+                                                    <div className="avatar self">{chat.senderName}</div>
                                                 </div>}
                                         </div>
                                     </li>
@@ -161,6 +225,7 @@ const ChatRoom = () => {
                     </div>
                 </div>
             }
+            <button onClick={() => console.log(chat)}>SHOW</button>
         </div>
     )
 }
