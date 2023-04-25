@@ -19,9 +19,13 @@ const ChatRoom = () => {
     const [allUsers, setAllUsers] = useState([]);
     const [resName, setResName] = useState("public");
     const BASE = ["public"]
-    localStorage.setItem("currentChat", "public")
+
 
     const getUsers = () => {
+
+        if(localStorage.getItem("currentChat") === null)
+            localStorage.setItem("currentChat", "public")
+
         axios.get("http://localhost:8080/allUsers").then(res => {
             setAllUsers([...BASE, ...res.data])
             if(localStorage.getItem("public") === null)
@@ -39,12 +43,11 @@ const ChatRoom = () => {
 
 
     const rebaseChat = (index) => {
-        console.log(JSON.parse(localStorage.getItem(index)))
+        // console.log(JSON.parse(localStorage.getItem(index)))
         setChat(JSON.parse(localStorage.getItem(index)))
         setResName(index)
-        console.log("index: "+ index)
-        // console.log(resName)
-        // localStorage.removeItem("currentChat")
+        // console.log("index: "+ index)
+
         localStorage.setItem("currentChat", index)
     }
 
@@ -66,34 +69,40 @@ const ChatRoom = () => {
 
     const onPublicMessageReceiver = (payload) => {
         let payloadData = JSON.parse(payload.body)
-        console.log(payloadData);
+        // console.log(payloadData);
         switch (payloadData.status) {
             case "JOIN":
                 getUsers()
                 console.log("New user has joined")
                 break;
             case "MESSAGE":
-                console.log("payload" + payloadData.senderName);
+
+                // console.log("payload" + payloadData.senderName);
+
                 if(payloadData.recipientName !== "public") {
                     let buff = JSON.parse(localStorage.getItem(payloadData.senderName))
                     if (buff === null)
                         buff = []
-                    console.log(buff)
+                    // console.log(buff)
                     buff.push(payloadData)
-                    console.log(payloadData)
+                    // console.log(payloadData)
+
                     localStorage.setItem(payloadData.senderName, JSON.stringify(buff))
-                    console.log(resName + "\t" + payloadData.senderName)
+
+                    // console.log("resName:" + resName + "\t" + payloadData.senderName)
+
                     if(localStorage.getItem("currentChat") === payloadData.senderName) {
-                        console.log("OK")
+                        // console.log("OK")
                         setChat(JSON.parse(localStorage.getItem(payloadData.senderName)))
                     }
+
                 }else{
                     let buff = JSON.parse(localStorage.getItem(payloadData.recipientName))
                     if (buff === null)
                         buff = []
-                    console.log(buff)
+                    // console.log(buff)
                     buff.push(payloadData)
-                    console.log(payloadData)
+                    // console.log(payloadData)
                     localStorage.setItem(payloadData.recipientName, JSON.stringify(buff))
                     if (localStorage.getItem("currentChat") === "public")
                         setChat(JSON.parse(localStorage.getItem(payloadData.recipientName)))
@@ -119,7 +128,7 @@ const ChatRoom = () => {
             };
             stompClient.send('/app/message', {}, JSON.stringify(chatMessage));
             setData({...data, "message": ""});
-            console.log(chatMessage);
+            // console.log(chatMessage);
         }
     }
 
@@ -174,27 +183,27 @@ const ChatRoom = () => {
                         <div className="member-list">
                             <div className='memberChangeName'>
                                 <h1 className="output__name">{name}</h1>
-                                <div className="changeName__wrapper">
-                                    <input type="text" className='changeName' id='changeNameId'/>
-                                    <button type="submit" className='changeBtn' onClick={() => {
-                                        let newValue = document.getElementById('changeNameId');
-                                        if (chat.filter(elem => elem.senderName === newValue.value).length === 0) {
-                                            rebase(name, newValue.value);
-                                            chat.map(elem => {
-                                                if (elem.senderName === name)
-                                                    elem.senderName = newValue.value;
-                                            })
-                                            setChat([...chat])
-                                            setName(newValue.value);
-                                            setData({...data, username: newValue.value});
-                                            newValue.value = "";
-                                        } else {
-                                            window.alert("This name are already busy");
-                                            newValue.value = "";
-                                        }
-                                    }}>Change
-                                    </button>
-                                </div>
+                                {/*<div className="changeName__wrapper">*/}
+                                {/*    changeName__wrapper<input type="text" className='changeName' id='changeNameId'/>*/}
+                                {/*    /!*<button type="submit" className='changeBtn' onClick={() => {*!/*/}
+                                {/*    /!*    let newValue = document.getElementById('changeNameId');*!/*/}
+                                {/*    /!*    if (chat.filter(elem => elem.senderName === newValue.value).length === 0) {*!/*/}
+                                {/*    /!*        rebase(name, newValue.value);*!/*/}
+                                {/*    /!*        chat.map(elem => {*!/*/}
+                                {/*    /!*            if (elem.senderName === name)*!/*/}
+                                {/*    /!*                elem.senderName = newValue.value;*!/*/}
+                                {/*    /!*        })*!/*/}
+                                {/*    /!*        setChat([...chat])*!/*/}
+                                {/*    /!*        setName(newValue.value);*!/*/}
+                                {/*    /!*        setData({...data, username: newValue.value});*!/*/}
+                                {/*    /!*        newValue.value = "";*!/*/}
+                                {/*    /!*    } else {*!/*/}
+                                {/*    /!*        window.alert("This name are already busy");*!/*/}
+                                {/*    /!*        newValue.value = "";*!/*/}
+                                {/*    /!*    }*!/*/}
+                                {/*    /!*}}>Change*!/*/}
+                                {/*    /!*</button>*!/*/}
+                                {/*</div>*/}
                             </div>
                             <ul>
                                 {
@@ -204,7 +213,7 @@ const ChatRoom = () => {
                             </ul>
                         </div>
                         <div className="chat-content">
-                            <div>Chat with:{resName}</div>
+                            <div>Chat with: {resName}</div>
                             <ul className="chat-messages">
                                 {chat.map((chat, index) => (
                                     <li key={index}>
@@ -240,7 +249,6 @@ const ChatRoom = () => {
                     </div>
                 </div>
             }
-            <button onClick={() => console.log(chat)}>SHOW</button>
         </div>
     )
 }

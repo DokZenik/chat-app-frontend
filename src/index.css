@@ -160,10 +160,12 @@ ul {
   margin: 10px 15px;
   border-radius: 5px;
   justify-content: flex-end;
+
 }
 
 .message-data{
   padding:5px;
+  overflow-wrap: anywhere;
 }
 .message.self{
   justify-content: end;
