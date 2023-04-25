@@ -19,12 +19,20 @@ const ChatRoom = () => {
     const [allUsers, setAllUsers] = useState([]);
     const [resName, setResName] = useState("public");
     const BASE = ["public"]
+    localStorage.setItem("currentChat", "public")
 
     const getUsers = () => {
         axios.get("http://localhost:8080/allUsers").then(res => {
             setAllUsers([...BASE, ...res.data])
-            localStorage.setItem("public", JSON.stringify([]))
-            res.data.map(elem => localStorage.setItem(elem, JSON.stringify([])))
+            if(localStorage.getItem("public") === null)
+                localStorage.setItem("public", JSON.stringify([]))
+
+            res.data.map(elem => {
+                if(localStorage.getItem(elem) === null)
+                    return  localStorage.setItem(elem, JSON.stringify([]))
+                else
+                    return localStorage.getItem(elem)
+            })
 
         })
     }
@@ -34,6 +42,10 @@ const ChatRoom = () => {
         console.log(JSON.parse(localStorage.getItem(index)))
         setChat(JSON.parse(localStorage.getItem(index)))
         setResName(index)
+        console.log("index: "+ index)
+        // console.log(resName)
+        // localStorage.removeItem("currentChat")
+        localStorage.setItem("currentChat", index)
     }
 
     const handleValue = (event) => {
@@ -70,8 +82,11 @@ const ChatRoom = () => {
                     buff.push(payloadData)
                     console.log(payloadData)
                     localStorage.setItem(payloadData.senderName, JSON.stringify(buff))
-                    if(resName === payloadData.senderName)
+                    console.log(resName + "\t" + payloadData.senderName)
+                    if(localStorage.getItem("currentChat") === payloadData.senderName) {
+                        console.log("OK")
                         setChat(JSON.parse(localStorage.getItem(payloadData.senderName)))
+                    }
                 }else{
                     let buff = JSON.parse(localStorage.getItem(payloadData.recipientName))
                     if (buff === null)
@@ -80,7 +95,7 @@ const ChatRoom = () => {
                     buff.push(payloadData)
                     console.log(payloadData)
                     localStorage.setItem(payloadData.recipientName, JSON.stringify(buff))
-                    if (resName === "public")
+                    if (localStorage.getItem("currentChat") === "public")
                         setChat(JSON.parse(localStorage.getItem(payloadData.recipientName)))
                 }
                 // chat.push(payloadData);
